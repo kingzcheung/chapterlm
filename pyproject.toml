@@ -1,0 +1,21 @@
+[project]
+name = "chapterlm"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "accelerate>=0.26.0",
+    "beautifulsoup4>=4.13.3",
+    "huggingface-hub>=0.28.1",
+    "pandas>=2.2.3",
+    "scikit-learn>=1.6.1",
+    "torch>=2.6.0",
+    "transformers[torch]>=4.48.3",
+]
+
+
+[[tool.uv.index]]
+name = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple"
+default = true
