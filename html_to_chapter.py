@@ -10,7 +10,7 @@ def main():
     # 追加的形式写入
     with open("data/chapter.txt",'a') as f:
         for i in s:
-            f.write(i.get_text()+'\n')
+            f.write(i.get_text().strip()+'\n')
     
     
 def merge():

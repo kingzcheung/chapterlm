@@ -7,6 +7,7 @@ model_name = "bert-base-chinese"  # 中文BERT
 tokenizer = BertTokenizer.from_pretrained(model_name)
 model = BertForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
+
 # 数据预处理
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, texts, labels, tokenizer, max_length=64):
@@ -18,11 +19,20 @@ class Dataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.texts)
 
+    def preprocess_data(self, data):
+        if isinstance(data, str):
+            return data
+        elif isinstance(data, list) and all(isinstance(i, str) for i in data):
+            return data
+        else:
+            return f"{data}"
+
     def __getitem__(self, idx):
         text = self.texts[idx]
+        item = self.preprocess_data(text)
         label = self.labels[idx]
         encoding = self.tokenizer(
-            text,
+            item,
             padding="max_length",
             truncation=True,
             max_length=self.max_length,

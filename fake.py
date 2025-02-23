@@ -21,7 +21,7 @@ if __name__ == '__main__':
     df = pd.read_csv("dataset/fake.csv", header=None, names=["text", "label"])
     
     data = []
-    for p in Path("./data").iterdir():
+    for p in Path("./data").rglob("*.nb"):
         if not p.name.endswith(".nb"): continue
         d = create_csv_data(str(p))
         data += d

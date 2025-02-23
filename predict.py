@@ -2,7 +2,7 @@ from transformers import AlbertForSequenceClassification, AutoTokenizer
 import torch
 
 # 加载模型和分词器
-model_name = "./results/checkpoint-3118"  # 中文ALBERT-Tiny（仅18MB）
+model_name = "./results/checkpoint-9386"  # 中文ALBERT-Tiny（仅18MB）
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AlbertForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
@@ -15,7 +15,7 @@ def predict(text):
         print(outputs)
     return torch.argmax(outputs.logits).item()
 
-text = "1、消失的他"
+text = "TinyBERT 的结构如下图："
 
 pred = predict(text)
 

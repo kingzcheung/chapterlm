@@ -10,7 +10,7 @@ from dataset import Dataset
 # tokenizer = BertTokenizer.from_pretrained(model_name)
 # model = BertForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
-pretrained = './albert_chinese_tiny'
+pretrained = './albert-tiny-chinese'
 tokenizer = AutoTokenizer.from_pretrained(pretrained)
 model = AlbertForSequenceClassification.from_pretrained(pretrained,num_labels=2)
 
@@ -23,7 +23,7 @@ labels = data["label"].tolist()
 
 # 划分训练集和测试集
 train_texts, test_texts, train_labels, test_labels = train_test_split(texts, labels, test_size=0.2, random_state=42)
-
+print(train_texts[0])
 # 创建数据集
 train_dataset = Dataset(train_texts, train_labels, tokenizer)
 test_dataset = Dataset(test_texts, test_labels, tokenizer)
@@ -34,9 +34,9 @@ training_args = TrainingArguments(
     eval_strategy="steps",
     save_strategy="steps",
     learning_rate=2e-5,
-    per_device_train_batch_size=32,
-    per_device_eval_batch_size=32,
-    num_train_epochs=2,
+    per_device_train_batch_size=64,
+    per_device_eval_batch_size=64,
+    num_train_epochs=1,
     weight_decay=0.01,
     logging_dir="./logs",
     logging_steps=10,
