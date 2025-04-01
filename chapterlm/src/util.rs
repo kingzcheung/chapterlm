@@ -53,7 +53,6 @@ pub fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor,attn_mask
     let s = k.dim(D::Minus2)?;
 
     let attn_bias = Tensor::zeros((l,s), q.dtype(), q.device())?; //Tensor[[64, 64], f32]
-    println!("attn_mask::{attn_mask}");
     let attn_weights = (q.matmul(&k.t()?)? * scale_factor)?;
     // let attn_bias = (attn_mask + attn_bias)?;
     let attn_bias = match attn_mask.dtype() {
@@ -80,13 +79,13 @@ pub fn _prepare_4d_attention_mask_for_sdpa(mask:&Tensor,dtype:DType,tgt_len:Opti
     let expanded_mask = mask.unsqueeze(1)?.unsqueeze(1)?.expand((bsz,1,tgt_len,key_value_length))?;
     // 变更类型，u32 转f32
     let expanded_mask = expanded_mask.to_dtype(DType::F32)?;
-    println!("expanded_mask::{expanded_mask}");
+    
     //inverted_mask = 1.0 - expanded_mask
     let inverted_mask = Tensor::ones((bsz,1,tgt_len,key_value_length),dtype,mask.device())? - &expanded_mask;
     //inverted_mask.masked_fill(inverted_mask.to(torch.bool), torch.finfo(dtype).min)
     let inverted_mask = inverted_mask?;
     let mask = inverted_mask.ne(0.0f32)?;
-    masked_fill( &expanded_mask,&mask, f32::NEG_INFINITY)
+    masked_fill( &expanded_mask,&mask, f32::MIN)
 }
 
 fn masked_fill(on_false: &Tensor, mask: &Tensor, on_true: f32) -> Result<Tensor> {

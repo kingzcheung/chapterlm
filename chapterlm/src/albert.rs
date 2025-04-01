@@ -1,19 +1,20 @@
-use candle_core::{D, DType, IndexOp, Result, Tensor};
+use candle_core::{D, IndexOp, Result, Tensor};
 use candle_nn::{
-    Activation, Dropout, Embedding, LayerNorm, Linear, Module, VarBuilder, activation, embedding,
+    Dropout, Embedding, LayerNorm, Linear, Module, VarBuilder, embedding,
     layer_norm, linear,
 };
 
 use crate::{
     config::{Config, HiddenAct, PositionEmbeddingType},
-    util::{_prepare_4d_attention_mask_for_sdpa, prune_linear_layer, scaled_dot_product_attention},
+    util::{_prepare_4d_attention_mask_for_sdpa, scaled_dot_product_attention},
 };
 
 #[derive(Debug, Clone)]
 pub struct AlbertEmbeddings {
     word_embeddings: Embedding,
     position_embeddings: Option<Embedding>,
-    position_embedding_type: PositionEmbeddingType,
+    #[allow(dead_code)]
+    position_embedding_type: PositionEmbeddingType, //暂时没用到
     token_type_embeddings: Embedding,
     layer_norm: LayerNorm,
     dropout: Dropout,
@@ -79,6 +80,7 @@ impl AlbertEmbeddings {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct AlbertAttention {
     query: Linear,
@@ -98,6 +100,7 @@ struct AlbertAttention {
     span_softmax: tracing::Span,
 }
 
+#[allow(dead_code)]
 impl AlbertAttention {
     fn load(vb: VarBuilder, config: &Config) -> Result<Self> {
         let attention_head_size = config.hidden_size / config.num_attention_heads;
@@ -185,21 +188,16 @@ struct AlbertSdpaAttention {
     query: Linear,
     key: Linear,
     value: Linear,
-    hidden_size: usize,
     num_attention_heads: usize,
     attention_head_size: usize,
     all_head_size: usize,
-
-    attention_dropout: Dropout,
     output_dropout: Dropout,
     dense: Linear,
     layer_norm: LayerNorm,
-
     span: tracing::Span,
-    span_softmax: tracing::Span,
 
-    dropout_prob: f32,
-    require_contiguous_qkv: bool,
+    // dropout_prob: f32, // 推理不需要 dropout
+    // require_contiguous_qkv: bool,
 }
 
 impl AlbertSdpaAttention {
@@ -217,18 +215,15 @@ impl AlbertSdpaAttention {
             query,
             key,
             value,
-            hidden_size,
             num_attention_heads: config.num_attention_heads,
             attention_head_size,
             all_head_size,
-            attention_dropout: Dropout::new(config.attention_probs_dropout_prob),
             output_dropout: Dropout::new(config.hidden_dropout_prob),
             dense,
             layer_norm,
             span: tracing::span!(tracing::Level::TRACE, "attention"),
-            span_softmax: tracing::span!(tracing::Level::TRACE, "softmax"),
-            dropout_prob: config.attention_probs_dropout_prob,
-            require_contiguous_qkv: false,
+            // dropout_prob: config.attention_probs_dropout_prob,
+            // require_contiguous_qkv: false,
         })
     }
 
@@ -241,12 +236,8 @@ impl AlbertSdpaAttention {
         xs.contiguous()
     }
 
-    // 剪枝
-    fn prune(&self, _heads: &[usize]) -> Result<()> {
-        unimplemented!()
-    }
-
     fn forward(&self, hidden_states: &Tensor, attention_mask: &Tensor) -> Result<(Tensor,)> {
+        
         // batch_size, seq_len, _ = hidden_states.size()
         let (batch_size, seq_len, _) = hidden_states.dims3()?;
 
@@ -436,8 +427,6 @@ impl AlbertLayerGroups {
 pub struct AlbertTransformer {
     embedding_hidden_mapping_in: Linear,
     albert_layer_groups: AlbertLayerGroups,
-    num_hidden_layers: usize,
-    num_hidden_groups: usize,
 }
 
 impl AlbertTransformer {
@@ -452,8 +441,6 @@ impl AlbertTransformer {
         Ok(Self {
             embedding_hidden_mapping_in,
             albert_layer_groups,
-            num_hidden_layers: config.num_hidden_layers,
-            num_hidden_groups: config.num_hidden_groups,
         })
     }
 
@@ -470,7 +457,6 @@ pub struct AlbertModel {
     encoder: AlbertTransformer,
     pooler: Linear,
     // pooler_activation: Activation
-    num_hidden_layers: usize,
 }
 
 impl AlbertModel {
@@ -485,12 +471,10 @@ impl AlbertModel {
         let embeddings = AlbertEmbeddings::load(vb.pp("embeddings"), config)?;
         let encoder = AlbertTransformer::load(vb.pp("encoder"), config)?;
         let pooler = linear(config.hidden_size, config.hidden_size, vb.pp("pooler"))?;
-        let num_hidden_layers = config.num_hidden_layers;
         Ok(Self {
             embeddings,
             encoder,
             pooler,
-            num_hidden_layers,
         })
     }
 
@@ -500,7 +484,7 @@ impl AlbertModel {
         attention_mask: &Tensor,
         token_type_ids: &Tensor,
     ) -> Result<(Tensor, Tensor)> {
-        let (batch_size, seq_len) = input_ids.dims2()?;
+        let (_batch_size, seq_len) = input_ids.dims2()?;
         let embedding_output = self.embeddings.forward(input_ids, token_type_ids)?;
 
         let extended_attention_mask = _prepare_4d_attention_mask_for_sdpa(
